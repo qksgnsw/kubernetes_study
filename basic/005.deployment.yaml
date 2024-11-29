@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment # 레플리카셋을 만듬
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: nginx-deployment # template.metadata.labels.[key] 와 맞아야함.
+  # strategy:
+  #   type: Recreate # 일괄 업데이트
+  strategy:
+    type: RollingUpdate # 롤링업데이트
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: nginx-deployment # selector.matchLabels.[key] 와 맞아야함.
+    spec:
+      containers:
+      - name: nc
+        image: nginx:1.18
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        ports:
+        - containerPort: 80

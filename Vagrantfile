@@ -1,0 +1,40 @@
+VAGRANTFILE_API_VERSION = "2"
+
+k8s_cluster = {
+  "nfs-storage-node" => { :ip => "192.168.31.100", :cpus => 2, :memory => 4096 },
+  "kubespray-node" => { :ip => "192.168.31.200", :cpus => 2, :memory => 4096 },
+	"control-plane"=> { :ip => "192.168.31.10", :cpus => 2, :memory => 8192 },
+  "worker-node1" => { :ip => "192.168.31.20", :cpus => 2, :memory => 4096 },
+  "worker-node2" => { :ip => "192.168.31.30", :cpus => 2, :memory => 4096 },
+}
+ 
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+  k8s_cluster.each do |hostname, info|
+
+    config.vm.define hostname do |cfg|
+      cfg.vm.provider "virtualbox" do |vb,override|
+        config.vm.box = "generic/ubuntu2204"
+        override.vm.network "private_network", ip: "#{info[:ip]}"
+        override.vm.host_name = hostname
+        vb.name = hostname
+				vb.gui = false
+        vb.customize ["modifyvm", :id, "--memory", info[:memory], "--cpus", info[:cpus]]
+        # nfs node
+				if "#{hostname}" == "nfs-storage-node" then 
+          override.vm.provision "shell", path: "ssh_conf.sh", privileged: true
+          override.vm.provision "shell", path: "nfs_server.sh", privileged: true
+        # ansible node  
+        elsif "#{hostname}" == "kubespray-node" then
+          override.vm.provision "shell", path: "ssh_conf.sh", privileged: true
+          override.vm.provision "shell", path: "add_hosts.sh", privileged: true
+        # master + worker node
+				else
+					override.vm.provision "shell", path: "ssh_conf.sh", privileged: true
+					override.vm.provision "shell", path: "nfs_client.sh", privileged: true
+				end  
+      end  
+    end  
+  end  
+end 
+

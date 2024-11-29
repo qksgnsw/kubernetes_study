@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: ReplicaSet # 파드를 만듬
+metadata:
+  name: apahce-replica # 파드의 이름
+  # labels:
+  #   app: apahce-replica
+spec:
+  replicas: 5 # 0 으로 변경하여 삭제
+  selector:
+    matchLabels:
+      app: apahce-replica # template.metadata.labels.[key] 와 맞아야함.
+  # 어떤 형태로 만들 것인가.
+  template:
+    metadata:
+      labels:
+        app: apahce-replica # selector.matchLabels.[key] 와 맞아야함.
+    spec:
+      containers:
+        - name: ac
+          image: httpd:2.4
+          ports:
+            - containerPort: 80
