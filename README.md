@@ -1255,6 +1255,7 @@ servicel2statuses                                metallb.io/v1beta1             
 ```
 ### [L2 모드로 구성하기](https://metallb.universe.tf/configuration/#layer-2-configuration)
 ```yaml
+# metallb/001.setup.yaml
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:
