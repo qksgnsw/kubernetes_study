@@ -43,7 +43,14 @@ k8s for begginer
   - [Config](#config)
     - [ConfigMap](#configmap)
     - [Secret](#secret)
-    - [example](#example)
+- [5. wordpress + mysql](#5-wordpress--mysql)
+- [7. Metallb](#7-metallb)
+  - [Why?](#why)
+  - [설치](#설치)
+  - [L2 모드로 구성하기](#l2-모드로-구성하기)
+- [Role](#role)
+- [helm](#helm)
+- [Monitoring](#monitoring)
 
 ## 1. `vagrant`로 가상머신 생성하기
 `virtualBox` Version 7.0
@@ -1140,7 +1147,7 @@ password:  8 bytes
 ```
 
 
-#### example
+## 5. wordpress + mysql
 
 스토리지로 사용할 폴더 생성
 ```sh
@@ -1175,4 +1182,111 @@ persistentvolumeclaim/wp-pvc created
 service/wordpress created
 deployment.apps/wordpress created
 ```
+확인
+```sh
+$ kubectl get all -o wide
+NAME                             READY   STATUS    RESTARTS   AGE   IP             NODE    NOMINATED NODE   READINESS GATES
+pod/mysql-745d4579b9-789lb       1/1     Running   0          29s   10.233.71.29   node3   <none>           <none>
+pod/wordpress-66f4cf6f68-xv9mw   1/1     Running   0          29s   10.233.75.10   node2   <none>           <none>
 
+NAME                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE   SELECTOR
+service/kubernetes   ClusterIP   10.233.0.1      <none>        443/TCP        86m   <none>
+service/mysql        ClusterIP   10.233.32.231   <none>        3306/TCP       29s   app=mysql
+service/wordpress    NodePort    10.233.1.96     <none>        80:32537/TCP   29s   app=wordpress
+
+NAME                        READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES      SELECTOR
+deployment.apps/mysql       1/1     1            1           29s   mysql        mysql       app=mysql
+deployment.apps/wordpress   1/1     1            1           29s   wordpress    wordpress   app=wordpress
+
+NAME                                   DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES      SELECTOR
+replicaset.apps/mysql-745d4579b9       1         1         1       29s   mysql        mysql       app=mysql,pod-template-hash=745d4579b9
+replicaset.apps/wordpress-66f4cf6f68   1         1         1       29s   wordpress    wordpress   app=wordpress,pod-template-hash=66f4cf6f68
+```
+
+NodePort로 외부 접속
+![접속 확인](./img/example.png)
+
+
+## 7. [Metallb](https://metallb.universe.tf)
+### Why?
+k8s은 bare-metal-cluster를 위한 nerwork load balancer를 지원하지 않는다.  
+IaaS 플랫폼이 아닐 경우 `Loadbalancer`는 'pending' 상태를 유지한다.  
+"NodePort"와 "externalIPs" 서비스를 사용할 수 있지만,  
+이 두 가지 옵션 모두 프로덕션 사용에 대한 상당한 단점이 있다.
+
+### 설치
+```sh
+$ kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml
+namespace/metallb-system created
+customresourcedefinition.apiextensions.k8s.io/bfdprofiles.metallb.io created
+customresourcedefinition.apiextensions.k8s.io/bgpadvertisements.metallb.io created
+customresourcedefinition.apiextensions.k8s.io/bgppeers.metallb.io created
+customresourcedefinition.apiextensions.k8s.io/communities.metallb.io created
+customresourcedefinition.apiextensions.k8s.io/ipaddresspools.metallb.io created
+customresourcedefinition.apiextensions.k8s.io/l2advertisements.metallb.io created
+customresourcedefinition.apiextensions.k8s.io/servicel2statuses.metallb.io created
+serviceaccount/controller created
+serviceaccount/speaker created
+role.rbac.authorization.k8s.io/controller created
+role.rbac.authorization.k8s.io/pod-lister created
+clusterrole.rbac.authorization.k8s.io/metallb-system:controller created
+clusterrole.rbac.authorization.k8s.io/metallb-system:speaker created
+rolebinding.rbac.authorization.k8s.io/controller created
+rolebinding.rbac.authorization.k8s.io/pod-lister created
+clusterrolebinding.rbac.authorization.k8s.io/metallb-system:controller created
+clusterrolebinding.rbac.authorization.k8s.io/metallb-system:speaker created
+configmap/metallb-excludel2 created
+secret/metallb-webhook-cert created
+service/metallb-webhook-service created
+deployment.apps/controller created
+daemonset.apps/speaker created
+validatingwebhookconfiguration.admissionregistration.k8s.io/metallb-webhook-configuration created
+```
+설치 확인
+```sh
+$ kubectl api-resources  | grep metal
+bfdprofiles                                      metallb.io/v1beta1                true         BFDProfile
+bgpadvertisements                                metallb.io/v1beta1                true         BGPAdvertisement
+bgppeers                                         metallb.io/v1beta2                true         BGPPeer
+communities                                      metallb.io/v1beta1                true         Community
+ipaddresspools                                   metallb.io/v1beta1                true         IPAddressPool
+l2advertisements                                 metallb.io/v1beta1                true         L2Advertisement
+servicel2statuses                                metallb.io/v1beta1                true         ServiceL2Status
+```
+### [L2 모드로 구성하기](https://metallb.universe.tf/configuration/#layer-2-configuration)
+```yaml
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: first-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.31.101-192.168.31.110 # 범위
+  # - 192.168.31.0/24 # 대역
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: example
+  namespace: metallb-system
+```
+
+
+## Role
+
+
+
+
+
+
+## helm
+
+
+
+
+
+
+
+
+## Monitoring
