@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-pv
+  labels:
+    volume: nfs-pv-volume # pvc가 호출할 때의 식별자가 됨
+spec:
+  capacity:
+    storage: 5Gi # Size와 관련되어있음.
+  # volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany # ReadWriteOnce, ReadWriteMany, ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain # Retain, Delete
+  # storageClassName: slow
+  # mountOptions:
+  #   - hard # hard, soft
+  #   - nfsvers=4.1
+  nfs:
+    path: /var/nfs_storage
+    server: 192.168.31.100
+    readOnly: false

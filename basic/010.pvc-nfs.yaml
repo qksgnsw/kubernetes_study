@@ -1,0 +1,62 @@
+# 012.pv-nfs.yaml을 실행하여 pv를 생성한 상태.
+# root@master:~/k8s-test# kubectl get pv
+# NAME     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+# nfs-pv   5Gi        RWX            Retain           Available                          <unset>                          29s
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-pvc
+spec:
+  selector:
+    matchLabels:
+      volume: nfs-pv-volume # pv의 metadata의 labels
+  resources:
+    requests:
+      storage: 1Gi
+  # volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany # ReadWriteOnce, ReadWriteMany, ReadOnlyMany
+
+
+# pvc 생성 후 상태
+# status 가 Bound로 변경
+# root@master:~/k8s-test# kubectl get pv
+# NAME     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM             STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+# nfs-pv   5Gi        RWX            Retain           Bound    default/nfs-pvc                  <unset>                          7m49s
+
+# root@master:~/k8s-test# kubectl get pvc
+# NAME      STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+# nfs-pvc   Bound    nfs-pv   5Gi        RWX                           <unset>                 76s
+
+# ns 변경해보기
+# root@master:~/k8s-test# chns myns
+# Context "kubernetes-admin@cluster.local" modified.
+
+# pv는 ns에 종속적이지 않고 전역적임
+# root@master:~/k8s-test# kubectl describe pv nfs-pv
+# Name:            nfs-pv
+# Labels:          volume=nfs-pv-volume
+# Annotations:     pv.kubernetes.io/bound-by-controller: yes
+# Finalizers:      [kubernetes.io/pv-protection]
+# StorageClass:
+# Status:          Bound
+# Claim:           default/nfs-pvc
+# Reclaim Policy:  Retain
+# Access Modes:    RWX
+# VolumeMode:      Filesystem
+# Capacity:        5Gi
+# Node Affinity:   <none>
+# Message:
+# Source:
+#     Type:      NFS (an NFS mount that lasts the lifetime of a pod)
+#     Server:    192.168.31.100
+#     Path:      /var/nfs_storage
+#     ReadOnly:  false
+# Events:        <none>
+
+# 하지만 pvc는 ns에 종속되어있으므로 격리됨
+# root@master:~/k8s-test# kubectl describe pvc nfs-pvc
+# Error from server (NotFound): persistentvolumeclaims "nfs-pvc" not found
+
+# kubectl api-resources | grep false
+# 의 결과물로 나오는 api 리소스는 전역적임

@@ -1,8 +1,19 @@
+k8s for begginer
+---
+2024/12/02
+
+## 0. 목차
+- [k8s for begginer](#k8s-for-begginer)
+- [0. 목차](#0-목차)
 - [1. `vagrant`로 가상머신 생성하기](#1-vagrant로-가상머신-생성하기)
   - [호스트 상세](#호스트-상세)
   - [가상머신 상세](#가상머신-상세)
   - [생성하기](#생성하기)
-- [2. k8s 설치하기](#2-k8s-설치하기)
+- [2. k8s 구축하기 with kubespray](#2-k8s-구축하기-with-kubespray)
+  - [설치하기](#설치하기)
+  - [kubespray로 삭제하기](#kubespray로-삭제하기)
+  - [트러블슈팅](#트러블슈팅)
+    - [ansible logging](#ansible-logging)
 - [3. k8s 클러스터 아키텍처](#3-k8s-클러스터-아키텍처)
   - [Control-plane(Master)](#control-planemaster)
   - [Node(Worker)](#nodeworker)
@@ -22,7 +33,8 @@
     - [hostPath](#hostpath)
     - [emptyDir](#emptydir)
     - [nfs](#nfs)
-  - [PersistentVolume](#persistentvolume)
+    - [PersistentVolume](#persistentvolume)
+      - [PV-lifecycle](#pv-lifecycle)
     - [PersistentVolumeCliam](#persistentvolumecliam)
   - [Config](#config)
     - [Secret](#secret)
@@ -63,25 +75,29 @@ vagrant box list
 vagrant up
 ```
 
-## 2. k8s 설치하기
-`kubespray`를 활용하여 설치합니다.  
+## 2. k8s 구축하기 with [kubespray](https://kubespray.io/#/)
+### 설치하기
 생성이 완료되면 `kubespray-node`로 접속합니다
 ```sh
 $ ssh vagrant@192.168.31.10 # password: vagrant
 ```
 패키지를 업데이트하고 설치합니다.
 ```sh
-$ apt update
-$ apt install git python3 python3-pip -y
+$ sudo apt update
+$ sudo apt install git python3 python3-pip -y
 ```
 접속을 위해 키를 생성하고 배포합니다.  
 `StrictHostKeyChecking` 옵션을 변경합니다.
 ```sh
 $ ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa <<<y > /dev/null
 $ ssh-copy-id 192.168.31.10
-$ ssh-copy-id 192.168.31.20 
-$ ssh-copy-id 192.168.31.30 
-$ sed -i '/StrictHostKeyChecking/c StrictHostKeyChecking no' /etc/ssh/ssh_config
+$ ssh-copy-id 192.168.31.20
+$ ssh-copy-id 192.168.31.30
+$ sudo sed -i '/StrictHostKeyChecking/c StrictHostKeyChecking no' /etc/ssh/ssh_config
+# 접속확인
+$ ssh -i ~/.ssh/id_rsa vagrant@192.168.31.10 'sudo hostname'
+$ ssh -i ~/.ssh/id_rsa vagrant@192.168.31.20 'sudo hostname'
+$ ssh -i ~/.ssh/id_rsa vagrant@192.168.31.30 'sudo hostname'
 ```
 kubespray를 설치합니다.  
 inventory_builder를 사용하는 버전으로 변경해야합니다.
@@ -91,8 +107,8 @@ cd kubespray/
 pip install -r requirements.txt
 # ansible path 등록
 source ~/.profile
-# 버전 변경
-git checkout f9ebd45 # 2.26.0 버전 사용
+# 버전 변경 -> 2.26.0 버전 사용
+git checkout f9ebd45
 # sample 복제
 cp -rfp inventory/sample/ inventory/mycluster/
 
@@ -101,6 +117,40 @@ pip3 install -r contrib/inventory_builder/requirements.txt
 declare -a IPS=(192.168.31.10 192.168.31.20 192.168.31.30)
 # 인벤토리 생성
 CONFIG_FILE=inventory/mycluster/hosts.yml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+```
+```yaml
+# 아래와 같이 수정. 
+all:
+  hosts:
+    node1:
+      ansible_host: 192.168.31.10
+      ip: 192.168.31.10
+      access_ip: 192.168.31.10
+    node2:
+      ansible_host: 192.168.31.20
+      ip: 192.168.31.20
+      access_ip: 192.168.31.20
+    node3:
+      ansible_host: 192.168.31.30
+      ip: 192.168.31.30
+      access_ip: 192.168.31.30
+  children:
+    kube_control_plane:
+      hosts:
+        node1:
+    kube_node:
+      hosts:
+        node2:
+        node3:
+    etcd:
+      hosts:
+        node1:
+    k8s_cluster:
+      children:
+        kube_control_plane:
+        kube_node:
+    calico_rr:
+      hosts: {}
 ```
 ```sh
 # 이 부분은 확인해봐야 합니다.
@@ -187,6 +237,20 @@ nodelocaldns-dm2n7                        1/1     Running   0          18m
 nodelocaldns-kgdhr                        1/1     Running   0          18m
 nodelocaldns-mgrsf                        1/1     Running   0          18m
 ```
+
+### kubespray로 삭제하기
+
+### 트러블슈팅
+#### ansible logging
+자세한 로그 보기
+```sh
+$ ansible [COMMAND] -vvv 
+```
+파이썬 패키지 확인하기
+```sh
+$ pip list
+```
+
 
 ## 3. [k8s 클러스터 아키텍처](https://kubernetes.io/docs/concepts/architecture/)
 ![k8s 클러스터 아키텍처](./img/kubernetes-cluster-architecture.svg)
@@ -588,7 +652,7 @@ apache   1/1     Running   0          46s   10.233.102.141   node1   <none>     
 ```
 hostpath에 존재하는 index.html로 서빙되는지 확인.
 ```sh
-root@node1:~/kubernetes# curl 10.233.102.141
+$ curl 10.233.102.141
 welcome
 ```
 
@@ -672,6 +736,8 @@ welcom to nfs_apache
 ```yaml
 # 아래와 같이 nfs 설정을 해놓은 상태임
 # 192.168.31.100:/var/nfs_storage     62G  5.2G   54G   9% /mnt/nfs_storage
+
+# basic/008.nfs.yaml
 apiVersion: apps/v1
 kind: ReplicaSet # 파드를 만듬
 metadata:
@@ -751,11 +817,58 @@ welcom to nfs_apache_update
 $ curl 10.233.71.21
 welcom to nfs_apache_update
 ```
-### PersistentVolume
-#### PersistentVolumeCliam
+
+#### [PersistentVolume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
+영구 스토리지 볼륨을 설정하기 위한 클러스터 리소스.  
+
+```yaml
+# 009.pb-nfs.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-pv
+  labels:
+    volume: nfs-pv-volume # pvc가 호출할 때의 식별자가 됨
+spec:
+  capacity:
+    storage: 5Gi # Size와 관련되어있음.
+  # volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany # ReadWriteOnce, ReadWriteMany, ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain # Retain, Delete
+  # storageClassName: slow
+  # mountOptions:
+  #   - hard # hard, soft
+  #   - nfsvers=4.1
+  nfs:
+    path: /var/nfs_storage
+    server: 192.168.31.100
+    readOnly: false
+```
+##### [PV-lifecycle](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#lifecycle-of-a-volume-and-claim)
+- Provisioning
+  - 볼륨으로 사용하기 위한 물리적인 공간 확보
+  - 디스크 공간을 확보하여 PV를 생성.
+  - 동적와 정적이 있음.
+- Binding
+  - PV 와 PVC를 연결하는 단계
+  - PVC는 여러개의 PV에 바인딩 될 수 없음.
+- Using
+  - PVC는 파드에 설정.
+  - 해당 파드는 PVC를 통해 볼륨을 인식.
+  - 파드를 유지하는 동안 지속적으로 사용 가능하며 시스템에서 제거 불가.
+- [Reclaiming](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#retain)
+  - 정책
+    - Retain(default): 데이터 보존
+    - Delete: 스토리지 볼륨 삭제
+    - Recycle(deprecated)
+#### [PersistentVolumeCliam](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims)
+유저가 PV를 사용하기 위한 요청 객체.
+
 ### Config
 #### Secret
 #### ConfigMap
+
 ### Batch
 #### Job
 #### CronJob
