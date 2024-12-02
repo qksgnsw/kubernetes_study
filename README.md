@@ -11,7 +11,7 @@ k8s for begginer
   - [생성하기](#생성하기)
 - [2. k8s 구축하기 with kubespray](#2-k8s-구축하기-with-kubespray)
   - [설치하기](#설치하기)
-  - [kubespray로 삭제하기](#kubespray로-삭제하기)
+  - [TODO: 삭제하기](#todo-삭제하기)
   - [트러블슈팅](#트러블슈팅)
     - [ansible logging](#ansible-logging)
 - [3. k8s 클러스터 아키텍처](#3-k8s-클러스터-아키텍처)
@@ -43,6 +43,7 @@ k8s for begginer
   - [Config](#config)
     - [ConfigMap](#configmap)
     - [Secret](#secret)
+    - [example](#example)
 
 ## 1. `vagrant`로 가상머신 생성하기
 `virtualBox` Version 7.0
@@ -63,11 +64,11 @@ k8s for begginer
 |worker-node2|192.168.31.30|2|4096|Ubuntu2204|k8s의 worker|/var/nfs_storage|
 
 ### 생성하기
-```cli
+```sh
 $ vagrant --version
 Vagrant 2.4.1
 ```
-```cli
+```sh
 # 이미지 미리 다운 받기
 vagrant box add generic/ubuntu2204
 # 이미지 확인
@@ -79,17 +80,17 @@ vagrant up
 ## 2. k8s 구축하기 with [kubespray](https://kubespray.io/#/)
 ### 설치하기
 생성이 완료되면 `kubespray-node`로 접속합니다
-```cli
+```sh
 $ ssh vagrant@192.168.31.10 # password: vagrant
 ```
 패키지를 업데이트하고 설치합니다.
-```cli
+```sh
 $ sudo apt update
 $ sudo apt install git python3 python3-pip -y
 ```
 접속을 위해 키를 생성하고 배포합니다.  
 `StrictHostKeyChecking` 옵션을 변경합니다.
-```cli
+```sh
 $ ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa <<<y > /dev/null
 $ ssh-copy-id 192.168.31.10
 $ ssh-copy-id 192.168.31.20
@@ -102,7 +103,7 @@ $ ssh -i ~/.ssh/id_rsa vagrant@192.168.31.30 'sudo hostname'
 ```
 kubespray를 설치합니다.  
 inventory_builder를 사용하는 버전으로 변경해야합니다.
-```cli
+```sh
 git clone https://github.com/kubernetes-incubator/kubespray.git
 cd kubespray/
 pip install -r requirements.txt
@@ -153,13 +154,13 @@ all:
     calico_rr:
       hosts: {}
 ```
-```cli
+```sh
 # 이 부분은 확인해봐야 합니다.
 $ sed -i 's/nf_conntrack_ipv4/nf_conntrack/' extra_playbooks/roles/kubernetes/node/tasks/main.yml
 $ sed -i 's/nf_conntrack_ipv4/nf_conntrack/' roles/kubernetes/node/tasks/main.yml
 ```
 복제한 폴더에 들어가 원하는 옵션을 변경합니다.
-```cli
+```sh
 # helm enable
 $ sed -i 's/^helm_enabled: false$/helm_enabled: true/' inventory/mycluster/group_vars/k8s_cluster/addons.yml
 # metric server enable
@@ -177,7 +178,7 @@ metrics_server_enabled: true # false에서 변경
 kube_network_plugin: calico # 원하는 플러그인으로 변경
 ```
 kubespray를 실행합니다.
-```cli
+```sh
 ansible-playbook -i inventory/mycluster/hosts.yml --become --become-user=root cluster.yml
 ```
 위 구성으로 약 15분 내외의 시간이 소요됩니다.  
@@ -190,19 +191,19 @@ node2                      : ok=420  changed=86   unreachable=0    failed=0    s
 node3                      : ok=420  changed=86   unreachable=0    failed=0    skipped=645  rescued=0    ignored=1
 ```
 마스터노드에 접속합니다.
-```cli
+```sh
 $ ssh vagrant@192.168.31.10
 ```
 root로 변경합니다.
-```cli
+```sh
 $ sudo -i
 ```
 k8s 상태를 확인합니다.
-```cli
+```sh
 $ kubectl get nodes
 ```
 아래와 같이 출력하면 정상입니다.
-```cli
+```sh
 # 노드 상태 확인
 $ kubectl get nodes
 NAME    STATUS   ROLES           AGE     VERSION
@@ -239,16 +240,16 @@ nodelocaldns-kgdhr                        1/1     Running   0          18m
 nodelocaldns-mgrsf                        1/1     Running   0          18m
 ```
 
-### kubespray로 삭제하기
+### TODO: 삭제하기
 
 ### 트러블슈팅
 #### ansible logging
 자세한 로그 보기
-```cli
+```sh
 $ ansible [COMMAND] -vvv 
 ```
 파이썬 패키지 확인하기
-```cli
+```sh
 $ pip list
 ```
 
@@ -287,7 +288,7 @@ k8s에서의 Service를 구현.
 
 ## 4. k8s 주요 오브젝트와 컨트롤러
 아래의 명령어로 오브젝트를 확인 할 수 있다.  
-```cli
+```sh
 kubectl api-resources
 ```
 ### [Namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
@@ -301,12 +302,12 @@ metadata:
   name:  testns
 ```
 생성
-```cli
+```sh
 kubectl apply -f basic/001.namespace.yaml 
 namespace/testns created
 ```
 생성 확인
-```cli
+```sh
 $ kubectl get namespace
 NAME              STATUS   AGE
 default           Active   127m
@@ -316,12 +317,12 @@ kube-system       Active   127m
 testns            Active   74s
 ```
 네임스페이스 변경
-```cli
+```sh
 $ kubectl config set-context --current --namespace=testns
 Context "kubernetes-admin@cluster.local" modified.
 ```
 변경 확인
-```cli
+```sh
 $ kubectl config current-context && kubectl config view --minify | grep namespace:
 kubernetes-admin@cluster.local
     namespace: testns
@@ -348,18 +349,18 @@ spec:
       - containerPort: 80
 ```
 파드 생성
-```cli
+```sh
 $ kubectl apply -f basic/002.pod.yaml 
 pod/apache created
 ```
 파드 확인
-```cli
+```sh
 $ kubectl get pods -o wide
 NAME     READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
 apache   1/1     Running   0          24s   10.233.71.2   node3   <none>           <none>
 ```
 아파치 접속 확인.  
-```cli
+```sh
 $ curl 10.233.71.2
 <html><body><h1>It works!</h1></body></html>
 ```
@@ -384,12 +385,12 @@ spec:
   type : NodePort 
 ```
 서비스 생성
-```cli
+```sh
 kubectl apply -f basic/003.service.yaml 
 service/apache created
 ```
 파드 확인
-```cli
+```sh
 $ kubectl get pods -o wide --show-labels
 NAME     READY   STATUS    RESTARTS   AGE     IP            NODE    NOMINATED NODE   READINESS GATES   LABELS
 apache   1/1     Running   0          2m48s   10.233.71.4   node3   <none>           <none>            app=apache
@@ -398,7 +399,7 @@ $ curl 10.233.71.4
 <html><body><h1>It works!</h1></body></html>
 ```
 서비스 확인(NodePort)
-```cli
+```sh
 $ kubectl get service -o wide
 NAME     TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE     SELECTOR
 apache   NodePort   10.233.46.196   <none>        8001:32455/TCP   2m33s   app=apache
@@ -407,7 +408,7 @@ curl 10.233.46.196:8001
 <html><body><h1>It works!</h1></body></html>
 ```
 외부에서의 접속
-```cli
+```sh
 $ curl 192.168.31.10:32455
 <html><body><h1>It works!</h1></body></html>
 ```
@@ -442,12 +443,12 @@ spec:
             - containerPort: 80
 ```
 레플리카셋 생성
-```cli
+```sh
 $ kubectl apply -f basic/004.replicaset.yaml 
 replicaset.apps/apahce-replica created
 ```
 파드 확인
-```cli
+```sh
 $ kubectl get pods -o wide --show-labels
 NAME                   READY   STATUS    RESTARTS   AGE   IP               NODE    NOMINATED NODE   READINESS GATES   LABELS
 apahce-replica-5xkdn   1/1     Running   0          64s   10.233.75.3      node2   <none>           <none>            app=apahce-replica
@@ -492,12 +493,12 @@ spec:
         - containerPort: 80
 ```
 Deployment 생성
-```cli
+```sh
 $ kubectl apply -f basic/005.deployment.yaml 
 deployment.apps/nginx-deployment created
 ```
 파드 확인
-```cli
+```sh
 $ kubectl get pods -o wide --show-labels
 NAME                               READY   STATUS    RESTARTS   AGE   IP               NODE    NOMINATED NODE   READINESS GATES   LABELS
 nginx-deployment-c69d65ccd-2k4zc   1/1     Running   0          48s   10.233.71.9      node3   <none>           <none>            app=nginx-deployment,pod-template-hash=c69d65ccd
@@ -513,7 +514,7 @@ nginx-deployment-c69d65ccd-tt7nf   1/1     Running   0          48s   10.233.71.
 ```
 레플리카셋 확인.  
 디플로이먼트는 레플리카셋을 생성한다.
-```cli
+```sh
 $ kubectl get replicasets.apps nginx-deployment-c69d65ccd 
 NAME                         DESIRED   CURRENT   READY   AGE
 nginx-deployment-c69d65ccd   10        10        10      91s
@@ -530,11 +531,11 @@ nginx-deployment-c69d65ccd   10        10        10      91s
 # basic/005.deployment.yaml  
 image: nginx:1.19 # nginx:1.18 에서 버전 변경
 ```
-```cli
+```sh
 $ kubectl apply -f basic/005.deployment.yaml 
 deployment.apps/nginx-deployment configured
 ```
-```cli
+```sh
 $ kubectl get pods -o wide --show-labels
 NAME                               READY   STATUS              RESTARTS   AGE    IP               NODE    NOMINATED NODE   READINESS GATES   LABELS
 nginx-deployment-844c97897-74rhv   0/1     ContainerCreating   0          5s     <none>           node2   <none>           <none>            app=nginx-deployment,pod-template-hash=844c97897
@@ -552,12 +553,12 @@ nginx-deployment-c69d65ccd-tnrgn   1/1     Running             0          6m4s  
 nginx-deployment-c69d65ccd-tt7nf   1/1     Running             0          6m4s   10.233.71.7      node3   <none>           <none>            app=nginx-deployment,pod-template-hash=c69d65ccd
 ```
 업데이트 확인
-```cli
+```sh
 $ kubectl describe pod nginx-deployment-844c97897-74rhv | grep Image:
     Image:          nginx:1.19
 ```
 롤아웃 히스토리 확인
-```cli
+```sh
 $ kubectl rollout history deployment nginx-deployment 
 deployment.apps/nginx-deployment 
 REVISION  CHANGE-CAUSE
@@ -566,12 +567,12 @@ REVISION  CHANGE-CAUSE
 ```
 ##### [undo](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_rollout/kubectl_rollout_undo/)
 이전 rollout으로의 롤백
-```cli
+```sh
 $ kubectl rollout undo deployment nginx-deployment --to-revision=1
 deployment.apps/nginx-deployment rolled back
 ```
 rollout 히스토리 확인
-```cli
+```sh
 $ kubectl rollout history deployment nginx-deployment 
 deployment.apps/nginx-deployment 
 REVISION  CHANGE-CAUSE
@@ -579,7 +580,7 @@ REVISION  CHANGE-CAUSE
 3         <none>
 ```
 롤백된 파드의 nginx 버전 확인
-```cli
+```sh
 $ kubectl describe pod nginx-deployment-c69d65ccd-6x9nk | grep Image:
     Image:          nginx:1.18
 ```
@@ -588,18 +589,18 @@ $ kubectl describe pod nginx-deployment-c69d65ccd-6x9nk | grep Image:
 #### [hostPath](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath)
 호스트 노드의 파일시스팀을 파드 안으로 마운트.  
 
-```cli
+```sh
 mkdir -p basic/hostpath
 echo welcome > basic/hostpath/index.html
 ```
 index.html 파일 확인
-```cli
+```sh
 cat basic/hostpath/index.html 
 welcome
 ```
 테스트할 노드의 레이블을 확인.  
 여기서는 `kubernetes.io/hostname: node1` 을 사용함.
-```cli
+```sh
 $ kubectl get nodes --show-labels
 NAME    STATUS   ROLES           AGE     VERSION   LABELS
 node1   Ready    control-plane   3h31m   v1.30.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=node1,kubernetes.io/os=linux,node-role.kubernetes.io/control-plane=,node.kubernetes.io/exclude-from-external-load-balancers=
@@ -641,18 +642,18 @@ spec:
 # volumes.name.hostPath.path를 
 # containers.name.volumeMounts.mountPath로 임포트함
 ```
-```cli
+```sh
 kubectl apply -f basic/006.hostpath.yaml 
 pod/apache created
 ```
 파드 상태 및 ip 확인
-```cli
+```sh
 kubectl get pods -o wide
 NAME     READY   STATUS    RESTARTS   AGE   IP               NODE    NOMINATED NODE   READINESS GATES
 apache   1/1     Running   0          46s   10.233.102.141   node1   <none>           <none>
 ```
 hostpath에 존재하는 index.html로 서빙되는지 확인.
-```cli
+```sh
 $ curl 10.233.102.141
 welcome
 ```
@@ -680,18 +681,18 @@ spec:
       emptyDir: {}
 ```
 파드 생성하기
-```cli
+```sh
 $ kubectl apply -f basic/007.emptydir.yaml 
 pod/redis created
 
 ```
 해당 파드 접속하기
-```cli
+```sh
 $ kubectl exec -it pods/redis -- /bin/bash
 root@redis:/data#
 ```
 마운트된 폴더에서 파일 생성
-```cli
+```sh
 root@redis:/data# cd redis/
 root@redis:/data/redis# echo redis >> myredis.txt
 root@redis:/data/redis# ls -al
@@ -702,7 +703,7 @@ drwxr-xr-x 3 redis redis 4096 Nov 29 07:06 ..
 ```
 파일 확인해보기  
 ***주의할점: 해당 파드가 위치하는 노드에서 검색해야 한다.***
-```cli
+```sh
 $ find / -name myredis.txt
 /var/lib/kubelet/pods/9fb605d7-a24b-4258-8091-718e197e9041/volumes/kubernetes.io~empty-dir/redis-storage/myredis.txt
 
@@ -714,7 +715,7 @@ redis
 nfs 볼륨은 기존 NFS(네트워크 파일 시스템) 공유를 Pod에 마운트할 수 있도록 함.
 
 nfs 마운트 확인
-```cli
+```sh
 $ df -h
 ...
 192.168.31.100:/var/nfs_storage     62G  5.1G   54G   9% /var/nfs_storage
@@ -725,11 +726,11 @@ Export list for 192.168.31.100:
 /var/nfs_storage 192.168.31.0/24
 ```
 nfs에 index.html 생성
-```cli
+```sh
 echo "welcom to nfs_apache" > /var/nfs_storage/index.html
 ```
 위 파일 확인 
-```cli
+```sh
 # nfs에 연결된 다른 노드에서도 확인.
 $ cat /var/nfs_storage/index.html
 welcom to nfs_apache
@@ -777,7 +778,7 @@ spec:
 # 실제로는 호스트에서 연결이 되어있어야 한다.
 ```
 파드 생성 확인
-```cli
+```sh
 $ kubectl get pods -o wide
 NAME                       READY   STATUS    RESTARTS   AGE   IP               NODE    NOMINATED NODE   READINESS GATES
 apahce-pod-replica-22blr   1/1     Running   0          15s   10.233.71.22     node3   <none>           <none>
@@ -792,7 +793,7 @@ apahce-pod-replica-psln8   1/1     Running   0          15s   10.233.102.142   n
 apahce-pod-replica-t8jmw   1/1     Running   0          15s   10.233.71.20     node3   <none>           <none>
 ```
 nfs에 속한 index.html 파일이 제대로 서빙되는지 확인
-```cli
+```sh
 # node1
 $ curl 10.233.102.144
 welcom to nfs_apache
@@ -804,13 +805,13 @@ $ curl 10.233.71.21
 welcom to nfs_apache
 ```
 파일 수정 테스트
-```cli
+```sh
 $ echo "welcom to nfs_apache_update" > /var/nfs_storage/index.html
 $ cat /var/nfs_storage/index.html
 welcom to nfs_apache_update
 ```
 정상적으로 업데이트 되었는지 확인
-```cli
+```sh
 $ curl 10.233.102.144
 welcom to nfs_apache_update
 $ curl 10.233.75.14
@@ -848,7 +849,7 @@ spec:
     readOnly: false
 ```
 pv 생성
-```cli
+```sh
 kubectl apply -f basic/009.pv-nfs.yaml 
 persistentvolume/nfs-pv created
 ```
@@ -856,7 +857,7 @@ pv 확인
 - `RWO` - ReadWriteOnce
 - `ROX` - ReadOnlyMany
 - `RWX` - ReadWriteMany
-```cli
+```sh
 $ kubectl get persistentvolume
 NAME     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
 nfs-pv   5Gi        RWX            Retain           Available                          <unset>                          34s
@@ -899,18 +900,18 @@ spec:
     - ReadWriteMany # ReadWriteOnce, ReadWriteMany, ReadOnlyMany
 ```
 pvc 생성
-```cli
+```sh
 kubectl apply -f basic/010.pvc-nfs.yaml 
 persistentvolumeclaim/nfs-pvc created
 ```
 pvc 생성 확인
-```cli
+```sh
 $ kubectl get persistentvolumeclaims 
 NAME      STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
 nfs-pvc   Bound    nfs-pv   5Gi        RWX                           <unset>                 12s
 ```
 pv의 status가 Available에서 Bound로 변경된 것을 확인.
-```cli
+```sh
 $ kubectl get persistentvolume
 NAME     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM             STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
 nfs-pv   5Gi        RWX            Retain           Bound    default/nfs-pvc                  <unset>                          5m18s
@@ -957,12 +958,12 @@ spec:
           claimName: nfs-pvc
 ```
 생성
-```cli
+```sh
 $ kubectl apply -f basic/011.apache-pvc-replicas.yaml 
 replicaset.apps/apahce-pod-replica created
 ```
 생성 중
-```cli
+```sh
 $ kubectl get pods -o wide
 NAME                       READY   STATUS              RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
 apahce-pod-replica-24xjg   0/1     ContainerCreating   0          32s   <none>        node3   <none>           <none>
@@ -977,14 +978,14 @@ apahce-pod-replica-s9ccz   0/1     ContainerCreating   0          32s   <none>  
 apahce-pod-replica-snjcn   1/1     Running             0          32s   10.233.75.5   node2   <none>           <none>
 ```
 모든 파드 생성 완료 후 테스트
-```cli
+```sh
 $ curl 10.233.71.5
 welcom to nfs_apache
 $ curl 10.233.71.2
 welcom to nfs_apache
 ```
 파일 수정 테스트
-```cli
+```sh
 $ echo "welcom to nfs_apache_update_1" > /var/nfs_storage/index.html
 $ cat /var/nfs_storage/index.html
 welcom to nfs_apache_update_1
@@ -1012,6 +1013,22 @@ spec:
       restartPolicy: Never
   backoffLimit: 4
 ```
+생성
+```sh
+$ kubectl apply -f basic/012.job.yaml 
+job.batch/pi created
+```
+확인
+```sh
+$ kubectl get jobs.batch pi 
+NAME   STATUS     COMPLETIONS   DURATION   AGE
+pi     Complete   1/1           84s        2m8s
+```
+로그 확인
+```sh
+$ kubectl logs jobs/pi
+3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679821480865132823066470938446095505822317253594081284811174502841027019385211055596446229489549303819644288109756659334461284756482337867831652712019091456485669234603486104543266482133936072602491412737245870066063155881748815209209628292540917153643678925903600113305305488204665213841469519415116094330572703657595919530921861173819326117931051185480744623799627495673518857527248912279381830119491298336733624406566430860213949463952247371907021798609437027705392171762931767523846748184676694051320005681271452635608277857713427577896091736371787214684409012249534301465495853710507922796892589235420199561121290219608640344181598136297747713099605187072113499999983729780499510597317328160963185950244594553469083026425223082533446850352619311881710100031378387528865875332083814206171776691473035982534904287554687311595628638823537875937519577818577805321712268066130019278766111959092164201989380952572010654858632788659361533818279682303019520353018529689957736225994138912497217752834791315155748572424541506959508295331168617278558890750983817546374649393192550604009277016711390098488240128583616035637076601047101819429555961989467678374494482553797747268471040475346462080466842590694912933136770289891521047521620569660240580381501935112533824300355876402474964732639141992726042699227967823547816360093417216412199245863150302861829745557067498385054945885869269956909272107975093029553211653449872027559602364806654991198818347977535663698074265425278625518184175746728909777727938000816470600161452491921732172147723501414419735685481613611573525521334757418494684385233239073941433345477624168625189835694855620992192221842725502542568876717904946016534668049886272327917860857843838279679766814541009538837863609506800642251252051173929848960841284886269456042419652850222106611863067442786220391949450471237137869609563643719172874677646575739624138908658326459958133904780275901
+```
 #### [CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
 CronJob은 반복되는 일정에 따라 `Job`을 생성
 ```yaml
@@ -1035,11 +1052,36 @@ spec:
             - -c
             - date; echo Hello from the Kubernetes cluster
           restartPolicy: OnFailure
-
 ```
+생성
+```sh
+$ kubectl apply -f basic/013.cronjob.yaml 
+cronjob.batch/hello created
+```
+확인
+```sh
+$ kubectl get cronjobs.batch hello 
+NAME    SCHEDULE    TIMEZONE   SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+hello   * * * * *   <none>     False     0        <none>          28s
+```
+로그 확인
+```sh
+$ kubectl logs jobs/hello-28885066
+Mon Dec  2 01:46:09 UTC 2024
+Hello from the Kubernetes cluster
+```
+
 ### [Config](https://kubernetes.io/docs/concepts/configuration/)
 #### [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/)
 환경에 따라 다르거나 자주 변경되는 설정 옵션을 오브젝트로 분리해서 관리
+```yaml
+```
 #### [Secret](https://kubernetes.io/docs/concepts/configuration/secret/)
 configmap 오브젝트와 비슷하지만 보안에 민감한 설정을 관리하기 위함
+```yaml
+```
+#### example
+```sh
+cd example
+```
 

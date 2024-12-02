@@ -1,0 +1,16 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: wp-pv
+  labels:
+    type: nfs-wp-storage
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  # hostPath:
+  #   path: "/storage/pv2"
+  nfs:
+    path: /var/nfs_storage/wp_storage # 폴더가 존재해야 한다.
+    server: 192.168.31.100

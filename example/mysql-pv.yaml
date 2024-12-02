@@ -1,0 +1,15 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: mysql-pv
+  labels:
+    type: nfs-mysql-storage
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    path: /var/nfs_storage/db_storage # 폴더가 존재해야한다.
+    server: 192.168.31.100
+    readOnly: false
