@@ -23,7 +23,7 @@ k8s for begginer
   - [Service](#service)
     - [ClusterIP](#clusterip)
     - [NodePort](#nodeport)
-    - [LoadBalancer](#loadbalancer)
+    - [TODO: LoadBalancer](#todo-loadbalancer)
   - [ReplicaSet](#replicaset)
   - [Deployment](#deployment)
     - [rollout](#rollout)
@@ -44,14 +44,18 @@ k8s for begginer
     - [ConfigMap](#configmap)
     - [Secret](#secret)
 - [5. wordpress + mysql](#5-wordpress--mysql)
-- [7. Metallb](#7-metallb)
+- [6. Metallb](#6-metallb)
   - [Why?](#why)
   - [설치](#설치)
   - [L2 모드로 구성하기](#l2-모드로-구성하기)
   - [테스트](#테스트)
-- [Role](#role)
-- [helm](#helm)
-- [Monitoring](#monitoring)
+- [7. TODO: Role](#7-todo-role)
+- [8. Helm](#8-helm)
+  - [설치](#설치-1)
+  - [사용법](#사용법)
+    - [기본 명령어](#기본-명령어)
+    - [기본 사용 예제](#기본-사용-예제)
+- [9. Monitoring with Prometheus](#9-monitoring-with-prometheus)
 
 ## 1. `vagrant`로 가상머신 생성하기
 `virtualBox` Version 7.0
@@ -420,7 +424,7 @@ curl 10.233.46.196:8001
 $ curl 192.168.31.10:32455
 <html><body><h1>It works!</h1></body></html>
 ```
-#### [LoadBalancer](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer)
+#### TODO: [LoadBalancer](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer)
 
 외부 로드밸런서를 사용하여 외부로 노출.
 ### [ReplicaSet](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/)
@@ -1208,7 +1212,7 @@ NodePort로 외부 접속
 ![접속 확인](./img/example.png)
 
 
-## 7. [Metallb](https://metallb.universe.tf)
+## 6. [Metallb](https://metallb.universe.tf)
 ### Why?
 k8s은 bare-metal-cluster를 위한 nerwork load balancer를 지원하지 않는다.  
 IaaS 플랫폼이 아닐 경우 `Loadbalancer`는 'pending' 상태를 유지한다.  
@@ -1326,26 +1330,358 @@ spec:
     targetPort: 80
   type: LoadBalancer # 기본적으로 라운드로빈임
 ```
+생성
+```sh
+kubectl apply -f metallb/002.testPodService.yaml 
+deployment.apps/nginx-test created
+service/nginx-svc created
+```
+확인: Service에서 LoadBalancer 에 EXTERNAL-IP가 pending이 아니라 할당된 것을 볼 수 있다.
+```sh
+$ kubectl get all -o wide
+NAME                              READY   STATUS    RESTARTS   AGE   IP             NODE    NOMINATED NODE   READINESS GATES
+pod/nginx-test-66ff5df8cb-6zvf5   1/1     Running   0          61s   10.233.71.34   node3   <none>           <none>
+pod/nginx-test-66ff5df8cb-8qzr7   1/1     Running   0          61s   10.233.75.15   node2   <none>           <none>
+pod/nginx-test-66ff5df8cb-bgzxh   1/1     Running   0          61s   10.233.71.32   node3   <none>           <none>
+pod/nginx-test-66ff5df8cb-dpj2s   1/1     Running   0          61s   10.233.75.12   node2   <none>           <none>
+pod/nginx-test-66ff5df8cb-f4zpl   1/1     Running   0          61s   10.233.75.14   node2   <none>           <none>
+pod/nginx-test-66ff5df8cb-g9t6v   1/1     Running   0          61s   10.233.71.35   node3   <none>           <none>
+pod/nginx-test-66ff5df8cb-hxlsk   1/1     Running   0          61s   10.233.71.33   node3   <none>           <none>
+pod/nginx-test-66ff5df8cb-lnc86   1/1     Running   0          61s   10.233.75.13   node2   <none>           <none>
+pod/nginx-test-66ff5df8cb-psh7w   1/1     Running   0          62s   10.233.75.11   node2   <none>           <none>
+pod/nginx-test-66ff5df8cb-q2lcw   1/1     Running   0          61s   10.233.71.31   node3   <none>           <none>
+
+NAME                 TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)        AGE    SELECTOR
+service/kubernetes   ClusterIP      10.233.0.1     <none>           443/TCP        112m   <none>
+service/nginx-svc    LoadBalancer   10.233.31.99   192.168.31.101   80:31646/TCP   62s    app=nginx-test
+
+NAME                         READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                           SELECTOR
+deployment.apps/nginx-test   10/10   10           10          62s   nginx-test   twoseven1408/test-nginx:latest   app=nginx-test
+
+NAME                                    DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES                           SELECTOR
+replicaset.apps/nginx-test-66ff5df8cb   10        10        10      62s   nginx-test   twoseven1408/test-nginx:latest   app=nginx-test,pod-template-hash=66ff5df8cb
+```
+
+endpoints 확인
+```sh
+$ kubectl get endpoints
+NAME         ENDPOINTS                                                     AGE
+kubernetes   192.168.31.10:6443                                            115m
+nginx-svc    10.233.71.31:80,10.233.71.32:80,10.233.71.33:80 + 7 more...   4m33s
+```
+
+LoadBalancer 및 라운드로빈 확인
+```sh
+$ curl 192.168.31.101
+
+ip address      hostname
+-------------------------------------------------
+10.233.75.14    nginx-test-66ff5df8cb-f4zpl
+
+-------------------------------------------------
+$ curl 192.168.31.101
+
+ip address      hostname
+-------------------------------------------------
+10.233.75.15    nginx-test-66ff5df8cb-8qzr7
+
+-------------------------------------------------
+$ curl 192.168.31.101
+
+ip address      hostname
+-------------------------------------------------
+10.233.75.13    nginx-test-66ff5df8cb-lnc86
+
+-------------------------------------------------
+
+...
+```
+
+ClusterIP 로 접속
+```sh
+$ curl 10.233.31.99
+
+ip address      hostname
+-------------------------------------------------
+10.233.75.14    nginx-test-66ff5df8cb-f4zpl
+
+-------------------------------------------------
+
+...
+```
+
+NodePort 방식으로 접속
+```sh
+$ curl 192.168.31.10:31646
+
+ip address      hostname
+-------------------------------------------------
+10.233.75.14    nginx-test-66ff5df8cb-f4zpl
+
+-------------------------------------------------
+
+...
+```
+
+
+## 7. TODO: [Role](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
 
 
+## 8. [Helm](https://helm.sh/ko/docs/)
+k8s 패키지 매니저
+### [설치](https://helm.sh/ko/docs/intro/install/)
+```sh
+$ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+$ chmod 700 get_helm.sh
+$ ./get_helm.sh
+
+Helm v3.16.3 is available. Changing from version v3.15.4.
+Downloading https://get.helm.sh/helm-v3.16.3-linux-amd64.tar.gz
+Verifying checksum... Done.
+Preparing to install helm into /usr/local/bin
+helm installed into /usr/local/bin/helm
+
+$ helm version
+
+version.BuildInfo{Version:"v3.16.3", GitCommit:"cfd07493f46efc9debd9cc1b02a0961186df7fdf", GitTreeState:"clean", GoVersion:"go1.22.7
+```
+### [사용법](https://helm.sh/ko/docs/intro/using_helm/)
+#### 기본 명령어
+- `helm search`
+  - `helm search hub`: 헬름 허브 검색
+  - `helm search repo`: 로컬 헬름 클라이언트에 추가된 저장소를 검색
+- `helm install`: 설치
+- `helm status [패지키명]`: 상태 추적 및 구성 정보 확인
+- `helm show values [패키지명]`: 구성 가능한 옵션 확인
+- `helm upgrad`e: TODO:
+- `helm rollback [RELEASE] [REVISION]`: TODO:
+- `helm uninstall [패키지명]`: 삭제
+- `helm list`: 현재 배포된 모든 릴리스 확인
+- `helm repo`
+  - `helm repo list`: 어떤 저장소들이 설정되어 있는지 확인
+  - `helm repo add`: 저장소 추가
+  - `helm repo update`: 저장소 업데이트
+  - `helm repo remove`: 저장소 삭제
+
+[cloud native package](https://artifacthub.io)
+
+#### 기본 사용 예제
+```sh
+mkdir helm && cd helm
+helm repo add bitnami https://charts.bitnami.com/bitnami 
+helm pull bitnami/nginx
+tar -xf nginx-18.2.6.tgz
+cp nginx/values.yaml nginx/my-values.yaml
+cd nginx/
+helm install nginx -f my-values.yaml .
+
+NAME: nginx
+LAST DEPLOYED: Mon Dec  2 03:44:27 2024
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+CHART NAME: nginx
+CHART VERSION: 18.2.6
+APP VERSION: 1.27.3
+```
+확인
+```sh
+$ kubectl get all -o wide
+NAME                         READY   STATUS     RESTARTS   AGE   IP       NODE    NOMINATED NODE   READINESS GATES
+pod/nginx-557bfc8757-g8tr8   0/1     Init:0/1   0          9s    <none>   node2   <none>           <none>
+
+NAME                 TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)                      AGE    SELECTOR
+service/kubernetes   ClusterIP      10.233.0.1     <none>           443/TCP                      166m   <none>
+service/nginx        LoadBalancer   10.233.1.148   192.168.31.101   80:30388/TCP,443:31460/TCP   9s     app.kubernetes.io/instance=nginx,app.kubernetes.io/name=nginx
+
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                                        SELECTOR
+deployment.apps/nginx   0/1     1            0           9s    nginx        docker.io/bitnami/nginx:1.27.3-debian-12-r0   app.kubernetes.io/instance=nginx,app.kubernetes.io/name=nginx
+
+NAME                               DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES                                        SELECTOR
+replicaset.apps/nginx-557bfc8757   1         1         0       9s    nginx        docker.io/bitnami/nginx:1.27.3-debian-12-r0   app.kubernetes.io/instance=nginx,app.kubernetes.io/name=nginx,pod-template-hash=557bfc8757
+```
+접속 확인
+```sh
+$ curl 192.168.31.101
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+상태 확인
+```sh
+$ helm status nginx 
+
+NAME: nginx
+LAST DEPLOYED: Mon Dec  2 03:44:27 2024
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+CHART NAME: nginx
+CHART VERSION: 18.2.6
+APP VERSION: 1.27.3
+
+** Please be patient while the chart is being deployed **
+NGINX can be accessed through the following DNS name from within your cluster:
+
+    nginx.default.svc.cluster.local (port 80)
+
+To access NGINX from outside the cluster, follow the steps below:
+
+1. Get the NGINX URL by running these commands:
+
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+        Watch the status with: 'kubectl get svc --namespace default -w nginx'
+
+    export SERVICE_PORT=$(kubectl get --namespace default -o jsonpath="{.spec.ports[0].port}" services nginx)
+    export SERVICE_IP=$(kubectl get svc --namespace default nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    echo "http://${SERVICE_IP}:${SERVICE_PORT}"
+
+WARNING: There are "resources" sections in the chart not set. Using "resourcesPreset" is not recommended for production. For production installations, please set the following values according to your workload needs:
+  - cloneStaticSiteFromGit.gitSync.resources
+  - resources
++info https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+```
+
+## 9. Monitoring with [Prometheus](https://artifacthub.io/packages/helm/prometheus-community/prometheus)
+저장소 추가 및 다운로드
+```sh
+cd helm
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 
+helm repo update 
+helm pull prometheus-community/kube-prometheus-stack 
+tar xvfz kube-prometheus-stack-66.3.0.tgz 
+mv kube-prometheus-stack kube-prometheus-stack-custom 
+cd kube-prometheus-stack-custom/ 
+cp values.yaml my-values.yaml 
+```
+설치
+```sh
+helm install prometheus -f my-values.yaml .
+
+# 약간의 시간이 흐른 뒤에
+NAME: prometheus
+LAST DEPLOYED: Mon Dec  2 04:05:33 2024
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+NOTES:
+kube-prometheus-stack has been installed. Check its status by running:
+  kubectl --namespace default get pods -l "release=prometheus"
+
+Visit https://github.com/prometheus-operator/kube-prometheus for instructions on how to create & configure Alertmanager and Prometheus instances using the Operator.
+```
+현재 상태 확인
+```sh
+$ kubectl get all -o wide
+NAME                                                         READY   STATUS              RESTARTS   AGE   IP              NODE    NOMINATED NODE   READINESS GATES
+pod/alertmanager-prometheus-kube-prometheus-alertmanager-0   2/2     Running             0          51s   10.233.71.38    node3   <none>           <none>
+pod/prometheus-grafana-55d59494bf-fg8kp                      0/3     ContainerCreating   0          68s   <none>          node2   <none>           <none>
+pod/prometheus-kube-prometheus-operator-76c785c96d-v4lkh     1/1     Running             0          68s   10.233.71.36    node3   <none>           <none>
+pod/prometheus-kube-state-metrics-d85c885bd-h8pt7            1/1     Running             0          68s   10.233.75.18    node2   <none>           <none>
+pod/prometheus-prometheus-kube-prometheus-prometheus-0       0/2     PodInitializing     0          49s   10.233.75.20    node2   <none>           <none>
+pod/prometheus-prometheus-node-exporter-fqxlf                1/1     Running             0          68s   192.168.31.10   node1   <none>           <none>
+pod/prometheus-prometheus-node-exporter-q8pgt                1/1     Running             0          68s   192.168.31.30   node3   <none>           <none>
+pod/prometheus-prometheus-node-exporter-zxnq5                1/1     Running             0          68s   192.168.31.20   node2   <none>           <none>
+
+NAME                                              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE    SELECTOR
+service/alertmanager-operated                     ClusterIP   None            <none>        9093/TCP,9094/TCP,9094/UDP   52s    app.kubernetes.io/name=alertmanager
+service/kubernetes                                ClusterIP   10.233.0.1      <none>        443/TCP                      3h9m   <none>
+service/prometheus-grafana                        ClusterIP   10.233.26.214   <none>        80/TCP                       69s    app.kubernetes.io/instance=prometheus,app.kubernetes.io/name=grafana
+service/prometheus-kube-prometheus-alertmanager   ClusterIP   10.233.46.120   <none>        9093/TCP,8080/TCP            69s    alertmanager=prometheus-kube-prometheus-alertmanager,app.kubernetes.io/name=alertmanager
+service/prometheus-kube-prometheus-operator       ClusterIP   10.233.48.6     <none>        443/TCP                      69s    app=kube-prometheus-stack-operator,release=prometheus
+service/prometheus-kube-prometheus-prometheus     ClusterIP   10.233.43.76    <none>        9090/TCP,8080/TCP            69s    app.kubernetes.io/name=prometheus,operator.prometheus.io/name=prometheus-kube-prometheus-prometheus
+service/prometheus-kube-state-metrics             ClusterIP   10.233.56.75    <none>        8080/TCP                     69s    app.kubernetes.io/instance=prometheus,app.kubernetes.io/name=kube-state-metrics
+service/prometheus-operated                       ClusterIP   None            <none>        9090/TCP                     50s    app.kubernetes.io/name=prometheus
+service/prometheus-prometheus-node-exporter       ClusterIP   10.233.59.185   <none>        9100/TCP                     69s    app.kubernetes.io/instance=prometheus,app.kubernetes.io/name=prometheus-node-exporter
+
+NAME                                                 DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE   CONTAINERS      IMAGES                                    SELECTOR
+daemonset.apps/prometheus-prometheus-node-exporter   3         3         3       3            3           kubernetes.io/os=linux   68s   node-exporter   quay.io/prometheus/node-exporter:v1.8.2   app.kubernetes.io/instance=prometheus,app.kubernetes.io/name=prometheus-node-exporter
+
+NAME                                                  READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS                                            IMAGES                                                                                                     SELECTOR
+deployment.apps/prometheus-grafana                    0/1     1            0           68s   grafana-sc-dashboard,grafana-sc-datasources,grafana   quay.io/kiwigrid/k8s-sidecar:1.28.0,quay.io/kiwigrid/k8s-sidecar:1.28.0,docker.io/grafana/grafana:11.3.1   app.kubernetes.io/instance=prometheus,app.kubernetes.io/name=grafana
+deployment.apps/prometheus-kube-prometheus-operator   1/1     1            1           68s   kube-prometheus-stack                                 quay.io/prometheus-operator/prometheus-operator:v0.78.2                                                    app=kube-prometheus-stack-operator,release=prometheus
+deployment.apps/prometheus-kube-state-metrics         1/1     1            1           68s   kube-state-metrics                                    registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.14.0                                              app.kubernetes.io/instance=prometheus,app.kubernetes.io/name=kube-state-metrics
+
+NAME                                                             DESIRED   CURRENT   READY   AGE   CONTAINERS                                            IMAGES                                                                                                     SELECTOR
+replicaset.apps/prometheus-grafana-55d59494bf                    1         1         0       68s   grafana-sc-dashboard,grafana-sc-datasources,grafana   quay.io/kiwigrid/k8s-sidecar:1.28.0,quay.io/kiwigrid/k8s-sidecar:1.28.0,docker.io/grafana/grafana:11.3.1   app.kubernetes.io/instance=prometheus,app.kubernetes.io/name=grafana,pod-template-hash=55d59494bf
+replicaset.apps/prometheus-kube-prometheus-operator-76c785c96d   1         1         1       68s   kube-prometheus-stack                                 quay.io/prometheus-operator/prometheus-operator:v0.78.2                                                    app=kube-prometheus-stack-operator,pod-template-hash=76c785c96d,release=prometheus
+replicaset.apps/prometheus-kube-state-metrics-d85c885bd          1         1         1       68s   kube-state-metrics                                    registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.14.0                                              app.kubernetes.io/instance=prometheus,app.kubernetes.io/name=kube-state-metrics,pod-template-hash=d85c885bd
+
+NAME                                                                    READY   AGE   CONTAINERS                     IMAGES
+statefulset.apps/alertmanager-prometheus-kube-prometheus-alertmanager   1/1     51s   alertmanager,config-reloader   quay.io/prometheus/alertmanager:v0.27.0,quay.io/prometheus-operator/prometheus-config-reloader:v0.78.2
+statefulset.apps/prometheus-prometheus-kube-prometheus-prometheus       0/1     49s   prometheus,config-reloader     quay.io/prometheus/prometheus:v2.55.1,quay.io/prometheus-operator/prometheus-config-reloader:v0.78.2
+```
+grafana에 접근하기 위해 service type 변경
+```sh
+kubectl edit service/prometheus-grafana
+```
+```yaml
+type: ClusterIP # 에서
+type: LoadBalancer # 으로 변경하고 저장
 
 
 
-## Role
+#:wq
+```
+```sh
+service/prometheus-grafana edited
+```
+접속 확인
+![그라파나 인덱스](./img/grafana-index.png)
 
-
-
-
-
-
-## helm
-
-
-
-
-
-
-
-
-## Monitoring
+초기 로그인 접속 정보 확인
+```sh
+$ kubectl get secrets prometheus-grafana -o yaml 
+```
+```yaml
+apiVersion: v1
+data:
+  admin-password: cHJvbS1vcGVyYXRvcg== # echo cHJvbS1vcGVyYXRvcg== | base64 -d ===> prom-operator
+  admin-user: YWRtaW4= # echo YWRtaW4= | base64 -d ====> admin
+  ldap-toml: ""
+kind: Secret
+metadata:
+  annotations:
+    meta.helm.sh/release-name: prometheus
+    meta.helm.sh/release-namespace: default
+  creationTimestamp: "2024-12-02T04:22:34Z"
+  labels:
+    app.kubernetes.io/instance: prom
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 11.3.1
+    helm.sh/chart: grafana-8.6.3
+  name: prometheus-grafana
+  namespace: default
+  resourceVersion: "26648"
+  uid: d09ea14d-e8de-47ed-a39b-b6d815aee29d
+type: Opaque
+```
+대시보드 확인
+![클러스터](./img/grafana-cluster.png)
+![네트워크](./img/grafana-network.png)
