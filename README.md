@@ -48,6 +48,7 @@ k8s for begginer
   - [Why?](#why)
   - [설치](#설치)
   - [L2 모드로 구성하기](#l2-모드로-구성하기)
+  - [테스트](#테스트)
 - [Role](#role)
 - [helm](#helm)
 - [Monitoring](#monitoring)
@@ -1272,6 +1273,63 @@ metadata:
   name: example
   namespace: metallb-system
 ```
+생성
+```sh
+$ kubectl apply -f metallb/001.setup.yaml 
+ipaddresspool.metallb.io/first-pool created
+l2advertisement.metallb.io/example created
+```
+확인
+```sh
+$ kubectl get ipaddresspools.metallb.io -n metallb-system
+NAME         AUTO ASSIGN   AVOID BUGGY IPS   ADDRESSES
+first-pool   true          false             ["192.168.31.101-192.168.31.110"]
+```
+### 테스트
+```yaml
+# metallb/002.testPodService.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-test
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: nginx-test
+  template:
+    metadata:
+      labels:
+        app: nginx-test
+    spec:
+      containers:
+      - name: nginx-test
+        # image: nginx:latest
+        image: twoseven1408/test-nginx:latest # 라운드로빈 테스트용
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svc
+spec:
+  selector:
+    app: nginx-test
+  ports:
+  - port: 80
+  # - port: 9000
+    targetPort: 80
+  type: LoadBalancer # 기본적으로 라운드로빈임
+```
+
+
+
+
 
 
 ## Role
