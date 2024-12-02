@@ -1075,11 +1075,54 @@ Hello from the Kubernetes cluster
 #### [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/)
 환경에 따라 다르거나 자주 변경되는 설정 옵션을 오브젝트로 분리해서 관리
 ```yaml
+# basic/014/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myconfigmap
+data:
+  testkey: testvalue
+```
+생성
+```sh
+$ kubectl apply -f basic/014.configmap.yaml 
+configmap/myconfigmap created
+```
+확인
+```sh
+$ kubectl describe configmaps myconfigmap 
+Name:         myconfigmap
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Data
+====
+testkey:
+----
+testvalue
+
+BinaryData
+====
+
+Events:  <none>
 ```
 #### [Secret](https://kubernetes.io/docs/concepts/configuration/secret/)
 configmap 오브젝트와 비슷하지만 보안에 민감한 설정을 관리하기 위함
 ```yaml
+# basic/015.secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+type: Opaque
+data:
+  password: cGFzc3dvcmQ= # echo -n password | base64
 ```
+
+
+
+
 #### example
 ```sh
 cd example
