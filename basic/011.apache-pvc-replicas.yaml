@@ -1,14 +1,3 @@
-# 009.pv-nfs.yaml을 실행하여 성공한 상태
-# 010.pvc-nfs.yaml을 실행하여 성공한 상태
-# pvc 생성 후 상태
-# status 가 Bound로 변경
-# root@master:~/k8s-test# kubectl get pv
-# NAME     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM             STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
-# nfs-pv   5Gi        RWX            Retain           Bound    default/nfs-pvc                  <unset>                          7m49s
-
-# root@master:~/k8s-test# kubectl get pvc
-# NAME      STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
-# nfs-pvc   Bound    nfs-pv   5Gi        RWX    
 apiVersion: apps/v1
 kind: ReplicaSet # 파드를 만듬
 metadata:
