@@ -32,6 +32,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 				else
 					override.vm.provision "shell", path: "ssh_conf.sh", privileged: true
 					override.vm.provision "shell", path: "nfs_client.sh", privileged: true
+					override.vm.provision "shell", path: "alias.sh", privileged: true
 				end  
       end  
     end  

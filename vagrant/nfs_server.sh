@@ -7,7 +7,7 @@ sudo systemctl enable nfs-server
 mkdir /var/nfs_storage
 # 아래설정중 ip address 와 괄호사이에 빈칸이 있으면 안됩니다.
 echo "/var/nfs_storage 192.168.31.0/24(rw,sync,no_subtree_check,no_root_squash)
-" > /etc/exports
+" >> /etc/exports
 sudo exportfs -r
 sudo exportfs -v
 sudo ufw disable

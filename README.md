@@ -11,6 +11,7 @@ k8s for begginer
   - [생성하기](#생성하기)
 - [2. k8s 구축하기 with kubespray](#2-k8s-구축하기-with-kubespray)
   - [설치하기](#설치하기)
+  - [TODO: 재시작 후 확인](#todo-재시작-후-확인)
   - [TODO: 삭제하기](#todo-삭제하기)
   - [트러블슈팅](#트러블슈팅)
     - [ansible logging](#ansible-logging)
@@ -82,9 +83,12 @@ Vagrant 2.4.1
 ```
 ```sh
 # 이미지 미리 다운 받기
-vagrant box add generic/ubuntu2204
+$ vagrant box add generic/ubuntu2204
 # 이미지 확인
-vagrant box list
+$ vagrant box list
+```
+```sh
+cd vagrant
 # 가상머신 구축
 vagrant up
 ```
@@ -132,40 +136,6 @@ declare -a IPS=(192.168.31.10 192.168.31.20 192.168.31.30)
 # 인벤토리 생성
 CONFIG_FILE=inventory/mycluster/hosts.yml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
 ```
-```yaml
-# 아래와 같이 수정. 
-all:
-  hosts:
-    node1:
-      ansible_host: 192.168.31.10
-      ip: 192.168.31.10
-      access_ip: 192.168.31.10
-    node2:
-      ansible_host: 192.168.31.20
-      ip: 192.168.31.20
-      access_ip: 192.168.31.20
-    node3:
-      ansible_host: 192.168.31.30
-      ip: 192.168.31.30
-      access_ip: 192.168.31.30
-  children:
-    kube_control_plane:
-      hosts:
-        node1:
-    kube_node:
-      hosts:
-        node2:
-        node3:
-    etcd:
-      hosts:
-        node1:
-    k8s_cluster:
-      children:
-        kube_control_plane:
-        kube_node:
-    calico_rr:
-      hosts: {}
-```
 ```sh
 # 이 부분은 확인해봐야 합니다.
 $ sed -i 's/nf_conntrack_ipv4/nf_conntrack/' extra_playbooks/roles/kubernetes/node/tasks/main.yml
@@ -193,7 +163,6 @@ kubespray를 실행합니다.
 ```sh
 ansible-playbook -i inventory/mycluster/hosts.yml --become --become-user=root cluster.yml
 ```
-위 구성으로 약 15분 내외의 시간이 소요됩니다.  
 정상적으로 설치되었다면 아래와 같은 문구가 마지막에 출력됩니다.  
 모든 노드의 failed가 0이어야 합니다.
 ```
@@ -251,8 +220,18 @@ nodelocaldns-dm2n7                        1/1     Running   0          18m
 nodelocaldns-kgdhr                        1/1     Running   0          18m
 nodelocaldns-mgrsf                        1/1     Running   0          18m
 ```
+### TODO: 재시작 후 확인
+가상머신 종료
+```sh
+$ ssh -i ~/.ssh/id_rsa vagrant@192.168.31.30 'sudo poweroff'
+$ ssh -i ~/.ssh/id_rsa vagrant@192.168.31.20 'sudo poweroff'
+$ ssh -i ~/.ssh/id_rsa vagrant@192.168.31.10 'sudo poweroff'
+```
 
 ### TODO: 삭제하기
+```sh
+ansible-playbook -i inventory/mycluster/hosts.yml --become --become-user=root reset.yml
+```
 
 ### 트러블슈팅
 #### ansible logging
