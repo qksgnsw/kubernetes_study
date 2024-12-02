@@ -1119,12 +1119,60 @@ type: Opaque
 data:
   password: cGFzc3dvcmQ= # echo -n password | base64
 ```
+생성
+```sh
+$ kubectl apply -f basic/015.secret.yaml 
+secret/mysecret created
+```
+확인
+```sh
+$ kubectl describe secrets mysecret 
+Name:         mysecret
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
 
+Type:  Opaque
 
+Data
+====
+password:  8 bytes
+```
 
 
 #### example
+
+스토리지로 사용할 폴더 생성
+```sh
+$ mkdir /var/nfs_storage/db_storage
+$ mkdir /var/nfs_storage/wp_storage
+```
+생성 확인
+```sh
+$ ls -al /var/nfs_storage/
+total 20
+drwxr-xr-x  4 root root 4096 Dec  2 02:13 .
+drwxr-xr-x 14 root root 4096 Dec  2 00:18 ..
+drwxr-xr-x  2 root root 4096 Dec  2 02:11 db_storage
+-rw-r--r--  1 root root   30 Dec  2 01:31 index.html
+drwxr-xr-x  2 root root 4096 Dec  2 02:13 wp_storage
+```
+폴더 진입
 ```sh
 cd example
+```
+생성
+```sh
+$ kubectl apply -f .
+configmap/mysqlconfig created
+persistentvolume/mysql-pv created
+persistentvolumeclaim/mysql-volumeclaim created
+service/mysql created
+deployment.apps/mysql created
+secret/mysqlsecret created
+persistentvolume/wp-pv created
+persistentvolumeclaim/wp-pvc created
+service/wordpress created
+deployment.apps/wordpress created
 ```
 

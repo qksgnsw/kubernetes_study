@@ -55,4 +55,3 @@ spec:
         - name: wordpress-persistent-storage
           persistentVolumeClaim:
             claimName: wp-pvc
-      nodeName: master
