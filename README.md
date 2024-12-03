@@ -57,6 +57,7 @@ k8s for begginer
     - [기본 명령어](#기본-명령어)
     - [기본 사용 예제](#기본-사용-예제)
 - [9. Monitoring with Prometheus](#9-monitoring-with-prometheus)
+- [Harbor](#harbor)
 
 ## 1. `vagrant`로 가상머신 생성하기
 `virtualBox` Version 7.0
@@ -94,7 +95,7 @@ vagrant up
 ```
 
 ## 2. k8s 구축하기 with [kubespray](https://kubespray.io/#/)
-### 설치하기
+### [설치하기](https://kubernetes.io/ko/docs/setup/production-environment/tools/kubespray/#클러스터-생성하기)
 생성이 완료되면 `kubespray-node`로 접속합니다
 ```sh
 $ ssh vagrant@192.168.31.10 # password: vagrant
@@ -232,6 +233,7 @@ $ ssh -i ~/.ssh/id_rsa vagrant@192.168.31.10 'sudo poweroff'
 ```sh
 ansible-playbook -i inventory/mycluster/hosts.yml --become --become-user=root reset.yml
 ```
+중간에 나오는 질문에 `yes` 입력.
 
 ### 트러블슈팅
 #### ansible logging
@@ -1198,7 +1200,7 @@ IaaS 플랫폼이 아닐 경우 `Loadbalancer`는 'pending' 상태를 유지한�
 "NodePort"와 "externalIPs" 서비스를 사용할 수 있지만,  
 이 두 가지 옵션 모두 프로덕션 사용에 대한 상당한 단점이 있다.
 
-### 설치
+### [설치](https://metallb.universe.tf/installation/)
 ```sh
 $ kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml
 namespace/metallb-system created
@@ -1664,3 +1666,21 @@ type: Opaque
 대시보드 확인
 ![클러스터](./img/grafana-cluster.png)
 ![네트워크](./img/grafana-network.png)
+
+## Harbor
+```sh
+helm repo add harbor https://helm.goharbor.io
+helm repo update
+helm pull harbor/harbor
+tar xvfz harbor-1.16.0.tgz
+cd harbor/
+cp values.yaml my-values.yaml
+vim my-values.yaml
+```
+```yaml
+# line 4
+type: LoadBalancer # type: ingress
+# line 23
+commonName: "harbor.myweb.io" # commonName: ""
+
+```
