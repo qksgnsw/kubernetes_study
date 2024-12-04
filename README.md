@@ -6,31 +6,38 @@ k8s for begginer
 - [k8s for begginer](#k8s-for-begginer)
 - [0. 목차](#0-목차)
 - [1. `vagrant`로 가상머신 생성하기](#1-vagrant로-가상머신-생성하기)
-  - [호스트 상세](#호스트-상세)
-  - [가상머신 상세](#가상머신-상세)
-  - [생성하기](#생성하기)
+  - [1. 호스트 상세](#1-호스트-상세)
+  - [2. 가상머신 상세](#2-가상머신-상세)
+  - [3. 생성하기](#3-생성하기)
 - [2. k8s 구축하기 with kubespray](#2-k8s-구축하기-with-kubespray)
-  - [설치하기](#설치하기)
-  - [TODO: 재시작 후 확인](#todo-재시작-후-확인)
-  - [TODO: 삭제하기](#todo-삭제하기)
-  - [트러블슈팅](#트러블슈팅)
+  - [1. 설치하기](#1-설치하기)
+  - [2. 삭제하기](#2-삭제하기)
+  - [3. 노드 관리](#3-노드-관리)
+    - [worker node](#worker-node)
+      - [추가](#추가)
+      - [삭제](#삭제)
+    - [control node](#control-node)
+      - [추가](#추가-1)
+      - [삭제](#삭제-1)
+  - [4. 트러블슈팅](#4-트러블슈팅)
     - [ansible logging](#ansible-logging)
+    - [파이썬 패키지 오류](#파이썬-패키지-오류)
 - [3. k8s 클러스터 아키텍처](#3-k8s-클러스터-아키텍처)
-  - [Control-plane(Master)](#control-planemaster)
-  - [Node(Worker)](#nodeworker)
+  - [1. Control-plane(Master)](#1-control-planemaster)
+  - [2. Node(Worker)](#2-nodeworker)
 - [4. k8s 주요 오브젝트와 컨트롤러](#4-k8s-주요-오브젝트와-컨트롤러)
-  - [Namespace](#namespace)
-  - [Pod](#pod)
-  - [Service](#service)
+  - [1. Namespace](#1-namespace)
+  - [2. Pod](#2-pod)
+  - [3. Service](#3-service)
     - [ClusterIP](#clusterip)
     - [NodePort](#nodeport)
-    - [TODO: LoadBalancer](#todo-loadbalancer)
-  - [ReplicaSet](#replicaset)
-  - [Deployment](#deployment)
+    - [LoadBalancer](#loadbalancer)
+  - [4.ReplicaSet](#4replicaset)
+  - [5. Deployment](#5-deployment)
     - [rollout](#rollout)
       - [history](#history)
       - [undo](#undo)
-  - [Volume](#volume)
+  - [6. Volume](#6-volume)
     - [hostPath](#hostpath)
     - [emptyDir](#emptydir)
     - [nfs](#nfs)
@@ -38,37 +45,39 @@ k8s for begginer
       - [PV-lifecycle](#pv-lifecycle)
     - [PersistentVolumeCliam](#persistentvolumecliam)
       - [PV + PVC + POD](#pv--pvc--pod)
-  - [Batch](#batch)
+  - [7. Batch](#7-batch)
     - [Job](#job)
     - [CronJob](#cronjob)
-  - [Config](#config)
+  - [8. Config](#8-config)
     - [ConfigMap](#configmap)
     - [Secret](#secret)
 - [5. wordpress + mysql](#5-wordpress--mysql)
 - [6. Metallb](#6-metallb)
-  - [Why?](#why)
-  - [설치](#설치)
-  - [L2 모드로 구성하기](#l2-모드로-구성하기)
-  - [테스트](#테스트)
+  - [1. Why?](#1-why)
+  - [2. 설치](#2-설치)
+  - [3. L2 모드로 구성하기](#3-l2-모드로-구성하기)
+  - [4. 테스트](#4-테스트)
 - [7. TODO: Role](#7-todo-role)
 - [8. Helm](#8-helm)
-  - [설치](#설치-1)
-  - [사용법](#사용법)
+  - [1. 설치](#1-설치)
+  - [2. 사용법](#2-사용법)
     - [기본 명령어](#기본-명령어)
     - [기본 사용 예제](#기본-사용-예제)
 - [9. Monitoring with Prometheus](#9-monitoring-with-prometheus)
-- [Harbor](#harbor)
+    - [1. 저장소 추가 및 다운로드](#1-저장소-추가-및-다운로드)
+    - [2. 설치](#2-설치-1)
+    - [3. 현재 상태 확인](#3-현재-상태-확인)
 
 ## 1. `vagrant`로 가상머신 생성하기
 `virtualBox` Version 7.0
 
-### 호스트 상세
+### 1. 호스트 상세
 - OS: Mac
 - cpu: 2.2 GHz 6코어 Intel Core i7
 - mem: 16GB 2400 MHz DDR4
 - storage: 256GB
 
-### 가상머신 상세
+### 2. 가상머신 상세
 |노드명|ip|cpu|mem|os|역할|nfs|
 |---|---|---|---|---|---|---|
 |nfs-storage-node|192.168.31.100|2|4096|Ubuntu2204|nfs 서버|/var/nfs_storage|
@@ -77,7 +86,7 @@ k8s for begginer
 |worker-node1|192.168.31.20|2|4096|Ubuntu2204|k8s의 worker|/var/nfs_storage|
 |worker-node2|192.168.31.30|2|4096|Ubuntu2204|k8s의 worker|/var/nfs_storage|
 
-### 생성하기
+### 3. 생성하기
 ```sh
 $ vagrant --version
 Vagrant 2.4.1
@@ -95,7 +104,10 @@ vagrant up
 ```
 
 ## 2. k8s 구축하기 with [kubespray](https://kubespray.io/#/)
-### [설치하기](https://kubernetes.io/ko/docs/setup/production-environment/tools/kubespray/#클러스터-생성하기)
+kubespray는 기본적으로 6개 이상의 노드일 때를 권장하지만,  
+해당 실습은 노드 3개로 구성되어 있기 때문에  
+모든 노드에 모든 역할을 부여합니다.  
+### 1. [설치하기](https://kubernetes.io/ko/docs/setup/production-environment/tools/kubespray/#클러스터-생성하기)
 생성이 완료되면 `kubespray-node`로 접속합니다
 ```sh
 $ ssh vagrant@192.168.31.10 # password: vagrant
@@ -137,10 +149,91 @@ declare -a IPS=(192.168.31.10 192.168.31.20 192.168.31.30)
 # 인벤토리 생성
 CONFIG_FILE=inventory/mycluster/hosts.yml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
 ```
+생성된 파일을 변경합니다.
+```yaml
+# 변경 전
+# inventory/mycluster/hosts.yml
+all:
+  hosts:
+    node1:
+      ansible_host: 192.168.31.10
+      ip: 192.168.31.10
+      access_ip: 192.168.31.10
+    node2:
+      ansible_host: 192.168.31.20
+      ip: 192.168.31.20
+      access_ip: 192.168.31.20
+    node3:
+      ansible_host: 192.168.31.30
+      ip: 192.168.31.30
+      access_ip: 192.168.31.30
+  children:
+    kube_control_plane:
+      hosts:
+        node1:
+        node2:
+    kube_node:
+      hosts:
+        node1:
+        node2:
+        node3:
+    etcd:
+      hosts:
+        node1:
+        node2:
+        node3:
+    k8s_cluster:
+      children:
+        kube_control_plane:
+        kube_node:
+    calico_rr:
+      hosts: {}
+```
+```yaml
+# 변경 후.
+# :se list 를 입력하여 tab 오류가 있는지 확인합니다.
+# inventory/mycluster/hosts.yml
+all:
+  hosts:
+    node1:
+      ansible_host: 192.168.31.10
+      ip: 192.168.31.10
+      access_ip: 192.168.31.10
+    node2:
+      ansible_host: 192.168.31.20
+      ip: 192.168.31.20
+      access_ip: 192.168.31.20
+    node3:
+      ansible_host: 192.168.31.30
+      ip: 192.168.31.30
+      access_ip: 192.168.31.30
+  children:
+    kube_control_plane:
+      hosts:
+        node1:
+        node2:
+        node3: # 해당 위치에 노드 추가
+    kube_node:
+      hosts:
+        node1:
+        node2:
+        node3:
+    etcd:
+      hosts:
+        node1:
+        node2:
+        node3:
+    k8s_cluster:
+      children:
+        kube_control_plane:
+        kube_node:
+    calico_rr:
+      hosts: {}
+```
 ```sh
 # 이 부분은 확인해봐야 합니다.
-$ sed -i 's/nf_conntrack_ipv4/nf_conntrack/' extra_playbooks/roles/kubernetes/node/tasks/main.yml
-$ sed -i 's/nf_conntrack_ipv4/nf_conntrack/' roles/kubernetes/node/tasks/main.yml
+# $ sed -i 's/nf_conntrack_ipv4/nf_conntrack/' extra_playbooks/roles/kubernetes/node/tasks/main.yml
+# $ sed -i 's/nf_conntrack_ipv4/nf_conntrack/' roles/kubernetes/node/tasks/main.yml
 ```
 복제한 폴더에 들어가 원하는 옵션을 변경합니다.
 ```sh
@@ -172,85 +265,88 @@ node1                      : ok=698  changed=151  unreachable=0    failed=0    s
 node2                      : ok=420  changed=86   unreachable=0    failed=0    skipped=645  rescued=0    ignored=1
 node3                      : ok=420  changed=86   unreachable=0    failed=0    skipped=645  rescued=0    ignored=1
 ```
-마스터노드에 접속합니다.
+정상적으로 설치가 되었는지 확인
 ```sh
-$ ssh vagrant@192.168.31.10
-```
-root로 변경합니다.
-```sh
-$ sudo -i
-```
-k8s 상태를 확인합니다.
-```sh
-$ kubectl get nodes
-```
-아래와 같이 출력하면 정상입니다.
-```sh
-# 노드 상태 확인
-$ kubectl get nodes
-NAME    STATUS   ROLES           AGE     VERSION
-node1   Ready    control-plane   6m      v1.30.4
-node2   Ready    <none>          5m15s   v1.30.4
-node3   Ready    <none>          5m15s   v1.30.4
+# ip 10, 20, 30 테스트해보면 됩니다.
+$ ssh vagrant@192.168.31.10 "sudo kubectl get nodes"
+
+NAME    STATUS   ROLES           AGE   VERSION
+node1   Ready    control-plane   24m   v1.30.4
+node2   Ready    control-plane   22m   v1.30.4
+node3   Ready    control-plane   21m   v1.30.4
+
 # 노드 메트릭 확인(metric-server가 정상적으로 설치되었다면.)
-$ kubectl top node
+$ ssh vagrant@192.168.31.10 "sudo kubectl top nodes"
+
 NAME    CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
-node1   183m         10%    2491Mi          34%
-node2   96m          5%     1606Mi          45%
-node3   60m          3%     1573Mi          44%
-# kube-system 확인
-$ kubectl get pods -n kube-system
-NAME                                      READY   STATUS    RESTARTS   AGE
-calico-kube-controllers-b5f8f6849-688s5   1/1     Running   0          19m
-calico-node-9gtrd                         1/1     Running   0          19m
-calico-node-dttlx                         1/1     Running   0          19m
-calico-node-tknr9                         1/1     Running   0          19m
-coredns-776bb9db5d-hj4wf                  1/1     Running   0          18m
-coredns-776bb9db5d-rqpcg                  1/1     Running   0          18m
-dns-autoscaler-6ffb84bd6-5qvf4            1/1     Running   0          18m
-kube-apiserver-node1                      1/1     Running   1          21m
-kube-controller-manager-node1             1/1     Running   2          21m
-kube-proxy-66kxp                          1/1     Running   0          20m
-kube-proxy-8qrrh                          1/1     Running   0          20m
-kube-proxy-hlh92                          1/1     Running   0          20m
-kube-scheduler-node1                      1/1     Running   1          21m
-metrics-server-795767c75-ptbsj            1/1     Running   0          17m
-nginx-proxy-node2                         1/1     Running   0          20m
-nginx-proxy-node3                         1/1     Running   0          20m
-nodelocaldns-dm2n7                        1/1     Running   0          18m
-nodelocaldns-kgdhr                        1/1     Running   0          18m
-nodelocaldns-mgrsf                        1/1     Running   0          18m
-```
-### TODO: 재시작 후 확인
-가상머신 종료
-```sh
-$ ssh -i ~/.ssh/id_rsa vagrant@192.168.31.30 'sudo poweroff'
-$ ssh -i ~/.ssh/id_rsa vagrant@192.168.31.20 'sudo poweroff'
-$ ssh -i ~/.ssh/id_rsa vagrant@192.168.31.10 'sudo poweroff'
+node1   318m         17%    2683Mi          36%
+node2   282m         15%    2035Mi          61%
+node3   268m         14%    1959Mi          59%
+
+$ ssh vagrant@192.168.31.10 "sudo kubectl get pods -n kube-system"
+
+NAME                                      READY   STATUS    RESTARTS      AGE
+calico-kube-controllers-b5f8f6849-6zq56   1/1     Running   0             22m
+calico-node-9cn6w                         1/1     Running   0             23m
+calico-node-jncdp                         1/1     Running   0             23m
+calico-node-l8mfv                         1/1     Running   0             23m
+coredns-776bb9db5d-5pfvp                  1/1     Running   0             21m
+coredns-776bb9db5d-n64cd                  1/1     Running   0             21m
+dns-autoscaler-6ffb84bd6-4rc66            1/1     Running   0             21m
+kube-apiserver-node1                      1/1     Running   1             27m
+kube-apiserver-node2                      1/1     Running   1             26m
+kube-apiserver-node3                      1/1     Running   1             25m
+kube-controller-manager-node1             1/1     Running   3             27m
+kube-controller-manager-node2             1/1     Running   2             26m
+kube-controller-manager-node3             1/1     Running   3             25m
+kube-proxy-4fwb9                          1/1     Running   0             24m
+kube-proxy-ss6pv                          1/1     Running   0             24m
+kube-proxy-z92jj                          1/1     Running   0             24m
+kube-scheduler-node1                      1/1     Running   1             27m
+kube-scheduler-node2                      1/1     Running   1             26m
+kube-scheduler-node3                      1/1     Running   2 (17m ago)   25m
+metrics-server-8cfd759db-vwgg9            1/1     Running   0             19m
+nodelocaldns-kdqm8                        1/1     Running   0             21m
+nodelocaldns-sd77w                        1/1     Running   0             21m
+nodelocaldns-snrdg                        1/1     Running   0             21m
 ```
 
-### TODO: 삭제하기
+### 2. 삭제하기
 ```sh
 ansible-playbook -i inventory/mycluster/hosts.yml --become --become-user=root reset.yml
 ```
 중간에 나오는 질문에 `yes` 입력.
 
-### 트러블슈팅
+### 3. [노드 관리](https://github.com/kubernetes-sigs/kubespray/blob/master/docs/operations/nodes.md)
+#### worker node
+##### 추가
+##### 삭제
+#### control node
+##### 추가
+##### 삭제
+
+
+### 4. 트러블슈팅
 #### ansible logging
 자세한 로그 보기
 ```sh
 $ ansible [COMMAND] -vvv 
 ```
+#### 파이썬 패키지 오류
 파이썬 패키지 확인하기
 ```sh
 $ pip list
+```
+```sh
+# 재설치
+pip install -r requirements.txt
 ```
 
 
 ## 3. [k8s 클러스터 아키텍처](https://kubernetes.io/docs/concepts/architecture/)
 ![k8s 클러스터 아키텍처](./img/kubernetes-cluster-architecture.svg)
 
-### Control-plane(Master)
+### 1. Control-plane(Master)
 클러스터의 전반적인 결정을 수행하고 클러스터 이벤트를 감지한다.  
 클러스터 내의 어떤 노드에서든 동작할 수 있지만,  
 일반적으로 클러스터와 동일한 노드 상에서 구동시킨다.  
@@ -269,7 +365,7 @@ $ pip list
     - 서비스 계정 컨트롤러: 새 네임스페이스에 대한 기본 서비스 계정생성.    
 
 
-### Node(Worker)
+### 2. Node(Worker)
 모든 노드에서 구동하며, k8s 런타임 환경을 제공.
 - kubelet  
 클러스터 안의 각 노드에서 구동하는 에이전트.  
@@ -284,7 +380,7 @@ k8s에서의 Service를 구현.
 ```sh
 kubectl api-resources
 ```
-### [Namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
+### 1. [Namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
 싱글 클러스터에서의 리소스 그룹을 격리하는 메커니즘.  
 
 ```yaml
@@ -320,7 +416,7 @@ $ kubectl config current-context && kubectl config view --minify | grep namespac
 kubernetes-admin@cluster.local
     namespace: testns
 ```
-### [Pod](https://kubernetes.io/docs/concepts/workloads/pods/)
+### 2. [Pod](https://kubernetes.io/docs/concepts/workloads/pods/)
 쿠버네티스의 기본단위
 ```yaml
 # basic/002.pod.yaml
@@ -357,7 +453,7 @@ apache   1/1     Running   0          24s   10.233.71.2   node3   <none>        
 $ curl 10.233.71.2
 <html><body><h1>It works!</h1></body></html>
 ```
-### [Service](https://kubernetes.io/docs/concepts/services-networking/service/)
+### 3. [Service](https://kubernetes.io/docs/concepts/services-networking/service/)
 쿠버네티스에서 서비스는 네트워크 애플리케이션을 노출하는 방법.
 #### [ClusterIP](https://kubernetes.io/docs/concepts/services-networking/service/#type-clusterip)
 클러스터 사설 IP
@@ -405,10 +501,14 @@ curl 10.233.46.196:8001
 $ curl 192.168.31.10:32455
 <html><body><h1>It works!</h1></body></html>
 ```
-#### TODO: [LoadBalancer](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer)
+#### [LoadBalancer](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer)
 
-외부 로드밸런서를 사용하여 외부로 노출.
-### [ReplicaSet](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/)
+외부 로드밸런서를 사용하여 외부로 노출.  
+
+[6. Metallb](#6-metallb)에서 추가 설명.
+
+
+### 4.[ReplicaSet](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/)
 원하는 파드의 갯수를 안정적으로 유지.
 ```yaml
 # basic/004.replicaset.yaml
@@ -451,7 +551,7 @@ apahce-replica-pdvnh   1/1     Running   0          64s   10.233.75.4      node2
 apahce-replica-qrp4w   1/1     Running   0          64s   10.233.71.5      node3   <none>           <none>            app=apahce-replica
 ```
 
-### [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+### 5. [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
 애플리케이션 워크로드를 구동하기 위한 파드 집합을 관리한다.
 ```yaml
 # basic/005.deployment.yaml  
@@ -577,7 +677,7 @@ REVISION  CHANGE-CAUSE
 $ kubectl describe pod nginx-deployment-c69d65ccd-6x9nk | grep Image:
     Image:          nginx:1.18
 ```
-### [Volume](https://kubernetes.io/docs/concepts/storage/volumes/)
+### 6. [Volume](https://kubernetes.io/docs/concepts/storage/volumes/)
 
 #### [hostPath](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath)
 호스트 노드의 파일시스팀을 파드 안으로 마운트.  
@@ -987,7 +1087,7 @@ $ curl 10.233.71.2
 welcom to nfs_apache_update_1
 welcom to nfs_apache_update_1
 ```
-### Batch
+### 7. Batch
 #### [Job](https://kubernetes.io/docs/concepts/workloads/controllers/job/)
 작업은 완료된 다음 중단되는 일회성 작업
 ```yaml
@@ -1064,7 +1164,7 @@ Mon Dec  2 01:46:09 UTC 2024
 Hello from the Kubernetes cluster
 ```
 
-### [Config](https://kubernetes.io/docs/concepts/configuration/)
+### 8. [Config](https://kubernetes.io/docs/concepts/configuration/)
 #### [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/)
 환경에 따라 다르거나 자주 변경되는 설정 옵션을 오브젝트로 분리해서 관리
 ```yaml
@@ -1194,13 +1294,13 @@ NodePort로 외부 접속
 
 
 ## 6. [Metallb](https://metallb.universe.tf)
-### Why?
+### 1. Why?
 k8s은 bare-metal-cluster를 위한 nerwork load balancer를 지원하지 않는다.  
 IaaS 플랫폼이 아닐 경우 `Loadbalancer`는 'pending' 상태를 유지한다.  
 "NodePort"와 "externalIPs" 서비스를 사용할 수 있지만,  
 이 두 가지 옵션 모두 프로덕션 사용에 대한 상당한 단점이 있다.
 
-### [설치](https://metallb.universe.tf/installation/)
+### 2. [설치](https://metallb.universe.tf/installation/)
 ```sh
 $ kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml
 namespace/metallb-system created
@@ -1239,7 +1339,7 @@ ipaddresspools                                   metallb.io/v1beta1             
 l2advertisements                                 metallb.io/v1beta1                true         L2Advertisement
 servicel2statuses                                metallb.io/v1beta1                true         ServiceL2Status
 ```
-### [L2 모드로 구성하기](https://metallb.universe.tf/configuration/#layer-2-configuration)
+### 3. [L2 모드로 구성하기](https://metallb.universe.tf/configuration/#layer-2-configuration)
 ```yaml
 # metallb/001.setup.yaml
 apiVersion: metallb.io/v1beta1
@@ -1270,7 +1370,7 @@ $ kubectl get ipaddresspools.metallb.io -n metallb-system
 NAME         AUTO ASSIGN   AVOID BUGGY IPS   ADDRESSES
 first-pool   true          false             ["192.168.31.101-192.168.31.110"]
 ```
-### 테스트
+### 4. 테스트
 ```yaml
 # metallb/002.testPodService.yaml
 apiVersion: apps/v1
@@ -1411,7 +1511,7 @@ ip address      hostname
 
 ## 8. [Helm](https://helm.sh/ko/docs/)
 k8s 패키지 매니저
-### [설치](https://helm.sh/ko/docs/intro/install/)
+### 1. [설치](https://helm.sh/ko/docs/intro/install/)
 ```sh
 $ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
 $ chmod 700 get_helm.sh
@@ -1427,7 +1527,7 @@ $ helm version
 
 version.BuildInfo{Version:"v3.16.3", GitCommit:"cfd07493f46efc9debd9cc1b02a0961186df7fdf", GitTreeState:"clean", GoVersion:"go1.22.7
 ```
-### [사용법](https://helm.sh/ko/docs/intro/using_helm/)
+### 2. [사용법](https://helm.sh/ko/docs/intro/using_helm/)
 #### 기본 명령어
 - `helm search`
   - `helm search hub`: 헬름 허브 검색
@@ -1549,7 +1649,7 @@ WARNING: There are "resources" sections in the chart not set. Using "resourcesPr
 ```
 
 ## 9. Monitoring with [Prometheus](https://artifacthub.io/packages/helm/prometheus-community/prometheus)
-저장소 추가 및 다운로드
+#### 1. 저장소 추가 및 다운로드
 ```sh
 cd helm
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 
@@ -1560,7 +1660,7 @@ mv kube-prometheus-stack kube-prometheus-stack-custom
 cd kube-prometheus-stack-custom/ 
 cp values.yaml my-values.yaml 
 ```
-설치
+#### 2. 설치
 ```sh
 helm install prometheus -f my-values.yaml .
 
@@ -1576,7 +1676,7 @@ kube-prometheus-stack has been installed. Check its status by running:
 
 Visit https://github.com/prometheus-operator/kube-prometheus for instructions on how to create & configure Alertmanager and Prometheus instances using the Operator.
 ```
-현재 상태 확인
+#### 3. 현재 상태 확인
 ```sh
 $ kubectl get all -o wide
 NAME                                                         READY   STATUS              RESTARTS   AGE   IP              NODE    NOMINATED NODE   READINESS GATES
@@ -1666,21 +1766,3 @@ type: Opaque
 대시보드 확인
 ![클러스터](./img/grafana-cluster.png)
 ![네트워크](./img/grafana-network.png)
-
-## Harbor
-```sh
-helm repo add harbor https://helm.goharbor.io
-helm repo update
-helm pull harbor/harbor
-tar xvfz harbor-1.16.0.tgz
-cd harbor/
-cp values.yaml my-values.yaml
-vim my-values.yaml
-```
-```yaml
-# line 4
-type: LoadBalancer # type: ingress
-# line 23
-commonName: "harbor.myweb.io" # commonName: ""
-
-```
